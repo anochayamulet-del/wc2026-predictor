@@ -940,7 +940,17 @@ async function renderAdmin() {
 
     let html = `
       <div class="fade-in">
-        <h2 class="text-2xl font-bold mb-4">⚙️ Admin - อัพเดทผลการแข่งขัน</h2>
+        <h2 class="text-2xl font-bold mb-4">⚙️ Admin Panel</h2>
+
+        <!-- Admin Tabs -->
+        <div class="mb-4 flex gap-2 border-b border-white/10 pb-2">
+          <button onclick="showAdminTab('matches')" id="admin-tab-matches" class="px-4 py-2 text-sm font-semibold rounded-t border-b-2 border-amber-400 text-amber-400">📅 จัดการผลแข่ง</button>
+          <button onclick="showAdminTab('users')" id="admin-tab-users" class="px-4 py-2 text-sm font-semibold rounded-t border-b-2 border-transparent text-gray-400 hover:text-white">👥 จัดการสมาชิก</button>
+        </div>
+
+        <div id="admin-tab-content">
+        <!-- Matches Tab -->
+        <div id="admin-panel-matches">
         <div class="mb-4 bg-white/5 border border-white/10 rounded-lg p-4">
           <div class="flex items-center justify-between">
             <div>
@@ -989,6 +999,8 @@ async function renderAdmin() {
     `;
 
     html += renderAdminMatchCards(matches);
+    html += '</div></div><!-- end matches panel -->';
+    html += '<div id="admin-panel-users" class="hidden"></div>';
     html += '</div></div>';
     content.innerHTML = html;
     window._adminMatches = matches;
@@ -1128,6 +1140,172 @@ async function adminDeclareChampion() {
       body: JSON.stringify({ team })
     });
     showToast(result.message);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ======= Admin Tab Switching =======
+function showAdminTab(tab) {
+  // Update tab buttons
+  document.getElementById('admin-tab-matches').className = `px-4 py-2 text-sm font-semibold rounded-t border-b-2 ${tab === 'matches' ? 'border-amber-400 text-amber-400' : 'border-transparent text-gray-400 hover:text-white'}`;
+  document.getElementById('admin-tab-users').className = `px-4 py-2 text-sm font-semibold rounded-t border-b-2 ${tab === 'users' ? 'border-amber-400 text-amber-400' : 'border-transparent text-gray-400 hover:text-white'}`;
+
+  // Show/hide panels
+  document.getElementById('admin-panel-matches').classList.toggle('hidden', tab !== 'matches');
+  document.getElementById('admin-panel-users').classList.toggle('hidden', tab !== 'users');
+
+  if (tab === 'users') {
+    loadAdminUsers();
+  }
+}
+
+// ======= Admin Users Management =======
+let adminSelectedUsers = new Set();
+
+async function loadAdminUsers() {
+  const panel = document.getElementById('admin-panel-users');
+  panel.innerHTML = '<div class="text-center py-6"><div class="inline-block animate-spin text-2xl">⚽</div></div>';
+
+  try {
+    const users = await api('/admin/users/scores');
+    window._adminUsers = users;
+
+    let html = `
+      <div class="mb-4 flex items-center justify-between">
+        <p class="text-sm text-gray-400">ทั้งหมด ${users.length} คน</p>
+        <div class="flex gap-2">
+          <button onclick="adminBulkReset()" id="btn-bulk-reset" class="hidden bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded text-sm transition">🗑️ Reset ที่เลือก (<span id="bulk-count">0</span>)</button>
+        </div>
+      </div>
+      <div class="bg-white/5 border border-white/10 rounded-xl overflow-hidden overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-white/10">
+            <tr>
+              <th class="px-3 py-2 text-left"><input type="checkbox" id="select-all-users" onchange="toggleSelectAllUsers()" class="rounded"></th>
+              <th class="px-3 py-2 text-left">ID</th>
+              <th class="px-3 py-2 text-left">ชื่อผู้ใช้</th>
+              <th class="px-3 py-2 text-left hidden sm:table-cell">อีเมล</th>
+              <th class="px-3 py-2 text-center">คะแนน</th>
+              <th class="px-3 py-2 text-center hidden sm:table-cell">ทายถูก</th>
+              <th class="px-3 py-2 text-center hidden sm:table-cell">สกอร์ถูก</th>
+              <th class="px-3 py-2 text-center">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    for (const user of users) {
+      html += `
+        <tr class="border-t border-white/5 hover:bg-white/5" id="user-row-${user.id}">
+          <td class="px-3 py-2"><input type="checkbox" class="user-checkbox rounded" value="${user.id}" onchange="toggleUserSelect(${user.id})"></td>
+          <td class="px-3 py-2 text-gray-400">${user.id}</td>
+          <td class="px-3 py-2 font-semibold">${user.username} ${user.is_admin ? '<span class="text-xs bg-amber-600/30 text-amber-400 px-1 rounded">Admin</span>' : ''}</td>
+          <td class="px-3 py-2 text-gray-400 hidden sm:table-cell">${user.email}</td>
+          <td class="px-3 py-2 text-center">
+            <input type="number" min="0" value="${user.total_points}" class="w-16 bg-white/10 border border-white/20 rounded px-2 py-0.5 text-center text-white text-sm" id="user-points-${user.id}">
+          </td>
+          <td class="px-3 py-2 text-center text-green-400 hidden sm:table-cell">${user.correct_results}</td>
+          <td class="px-3 py-2 text-center text-yellow-400 hidden sm:table-cell">${user.correct_scores}</td>
+          <td class="px-3 py-2 text-center">
+            <div class="flex gap-1 justify-center">
+              <button onclick="adminSaveUserPoints(${user.id})" class="bg-blue-600 hover:bg-blue-500 px-2 py-0.5 rounded text-xs transition" title="บันทึกคะแนน">💾</button>
+              <button onclick="adminResetUser(${user.id}, '${user.username}')" class="bg-orange-600 hover:bg-orange-500 px-2 py-0.5 rounded text-xs transition" title="Reset คะแนน">🔄</button>
+              ${!user.is_admin ? `<button onclick="adminDeleteUser(${user.id}, '${user.username}')" class="bg-red-600 hover:bg-red-500 px-2 py-0.5 rounded text-xs transition" title="ลบผู้ใช้">❌</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    html += '</tbody></table></div>';
+    panel.innerHTML = html;
+    adminSelectedUsers.clear();
+  } catch (err) {
+    panel.innerHTML = `<div class="text-center text-red-400 py-6">${err.message}</div>`;
+  }
+}
+
+function toggleSelectAllUsers() {
+  const checked = document.getElementById('select-all-users').checked;
+  document.querySelectorAll('.user-checkbox').forEach(cb => {
+    cb.checked = checked;
+    const userId = parseInt(cb.value);
+    if (checked) adminSelectedUsers.add(userId);
+    else adminSelectedUsers.delete(userId);
+  });
+  updateBulkButton();
+}
+
+function toggleUserSelect(userId) {
+  if (adminSelectedUsers.has(userId)) {
+    adminSelectedUsers.delete(userId);
+  } else {
+    adminSelectedUsers.add(userId);
+  }
+  updateBulkButton();
+}
+
+function updateBulkButton() {
+  const btn = document.getElementById('btn-bulk-reset');
+  const count = document.getElementById('bulk-count');
+  if (adminSelectedUsers.size > 0) {
+    btn.classList.remove('hidden');
+    count.textContent = adminSelectedUsers.size;
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+async function adminSaveUserPoints(userId) {
+  const points = parseInt(document.getElementById(`user-points-${userId}`).value);
+  if (isNaN(points) || points < 0) {
+    showToast('คะแนนไม่ถูกต้อง', 'error');
+    return;
+  }
+  try {
+    const result = await api(`/admin/users/${userId}/points`, {
+      method: 'PUT',
+      body: JSON.stringify({ total_points: points })
+    });
+    showToast(result.message);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminResetUser(userId, username) {
+  if (!confirm(`ยืนยัน Reset คะแนน ${username} เป็น 0?`)) return;
+  try {
+    const result = await api(`/admin/users/${userId}/reset`, { method: 'POST' });
+    showToast(result.message);
+    document.getElementById(`user-points-${userId}`).value = 0;
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminBulkReset() {
+  const count = adminSelectedUsers.size;
+  if (!confirm(`ยืนยัน Reset คะแนนทั้ง ${count} คนที่เลือก?`)) return;
+  try {
+    const result = await api('/admin/users/bulk-reset', {
+      method: 'POST',
+      body: JSON.stringify({ user_ids: [...adminSelectedUsers] })
+    });
+    showToast(result.message);
+    loadAdminUsers(); // refresh
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function adminDeleteUser(userId, username) {
+  if (!confirm(`⚠️ ยืนยันลบผู้ใช้ ${username}? (ข้อมูลทั้งหมดจะหายไป)`)) return;
+  try {
+    const result = await api(`/admin/users/${userId}`, { method: 'DELETE' });
+    showToast(result.message);
+    document.getElementById(`user-row-${userId}`)?.remove();
   } catch (err) {
     showToast(err.message, 'error');
   }

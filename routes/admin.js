@@ -143,4 +143,103 @@ router.post('/auto-update', authenticateToken, requireAdmin, async (req, res) =>
   }
 });
 
+// ======= User Management =======
+
+// Get all users with their scores
+router.get('/users/scores', authenticateToken, requireAdmin, (req, res) => {
+  const users = prepareAll(`
+    SELECT u.id, u.username, u.email, u.is_admin, u.created_at,
+           COALESCE(l.total_points, 0) as total_points,
+           COALESCE(l.correct_results, 0) as correct_results,
+           COALESCE(l.correct_scores, 0) as correct_scores,
+           COALESCE(l.total_predictions, 0) as total_predictions
+    FROM users u
+    LEFT JOIN leaderboard l ON u.id = l.user_id
+    ORDER BY u.id
+  `);
+  res.json(users);
+});
+
+// Update user points
+router.put('/users/:id/points', authenticateToken, requireAdmin, (req, res) => {
+  const { total_points } = req.body;
+  const userId = parseInt(req.params.id);
+
+  if (total_points === undefined || total_points < 0) {
+    return res.status(400).json({ error: 'คะแนนไม่ถูกต้อง' });
+  }
+
+  const user = prepareGet('SELECT id, username FROM users WHERE id = ?', [userId]);
+  if (!user) {
+    return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+  }
+
+  const existing = prepareGet('SELECT * FROM leaderboard WHERE user_id = ?', [userId]);
+  if (existing) {
+    prepareRun('UPDATE leaderboard SET total_points = ? WHERE user_id = ?', [total_points, userId]);
+  } else {
+    prepareRun('INSERT INTO leaderboard (user_id, total_points, correct_results, correct_scores, total_predictions) VALUES (?, ?, 0, 0, 0)', [userId, total_points]);
+  }
+
+  res.json({ message: `แก้ไขคะแนน ${user.username} เป็น ${total_points} สำเร็จ` });
+});
+
+// Reset points for single user
+router.post('/users/:id/reset', authenticateToken, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+
+  const user = prepareGet('SELECT id, username FROM users WHERE id = ?', [userId]);
+  if (!user) {
+    return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+  }
+
+  prepareRun('UPDATE leaderboard SET total_points = 0, correct_results = 0, correct_scores = 0, total_predictions = 0 WHERE user_id = ?', [userId]);
+  prepareRun('UPDATE predictions SET points_earned = 0 WHERE user_id = ?', [userId]);
+  prepareRun('UPDATE champion_predictions SET points_earned = 0 WHERE user_id = ?', [userId]);
+
+  res.json({ message: `Reset คะแนน ${user.username} เป็น 0 สำเร็จ` });
+});
+
+// Bulk reset points for multiple users
+router.post('/users/bulk-reset', authenticateToken, requireAdmin, (req, res) => {
+  const { user_ids } = req.body;
+
+  if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+    return res.status(400).json({ error: 'กรุณาเลือกผู้ใช้' });
+  }
+
+  let count = 0;
+  for (const userId of user_ids) {
+    const user = prepareGet('SELECT id FROM users WHERE id = ?', [userId]);
+    if (user) {
+      prepareRun('UPDATE leaderboard SET total_points = 0, correct_results = 0, correct_scores = 0, total_predictions = 0 WHERE user_id = ?', [userId]);
+      prepareRun('UPDATE predictions SET points_earned = 0 WHERE user_id = ?', [userId]);
+      prepareRun('UPDATE champion_predictions SET points_earned = 0 WHERE user_id = ?', [userId]);
+      count++;
+    }
+  }
+
+  res.json({ message: `Reset คะแนนสำเร็จ ${count} คน` });
+});
+
+// Delete user
+router.delete('/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const userId = parseInt(req.params.id);
+
+  const user = prepareGet('SELECT id, username, is_admin FROM users WHERE id = ?', [userId]);
+  if (!user) {
+    return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+  }
+  if (user.is_admin) {
+    return res.status(400).json({ error: 'ไม่สามารถลบ Admin ได้' });
+  }
+
+  prepareRun('DELETE FROM predictions WHERE user_id = ?', [userId]);
+  prepareRun('DELETE FROM champion_predictions WHERE user_id = ?', [userId]);
+  prepareRun('DELETE FROM leaderboard WHERE user_id = ?', [userId]);
+  prepareRun('DELETE FROM users WHERE id = ?', [userId]);
+
+  res.json({ message: `ลบผู้ใช้ ${user.username} สำเร็จ` });
+});
+
 module.exports = router;
