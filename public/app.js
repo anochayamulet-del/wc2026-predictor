@@ -359,14 +359,16 @@ async function loadWelcomeLeaderboard() {
           <h3 class="font-bold text-amber-400">🏆 ตารางคะแนนสมาชิก</h3>
           <span class="text-xs text-gray-400">${members.length} คน</span>
         </div>
-        <table class="w-full text-sm table-fixed">
+        <div class="overflow-x-auto">
+        <table class="w-full text-sm">
           <thead class="bg-white/5">
             <tr>
-              <th class="px-3 py-2 text-left text-xs w-10">#</th>
-              <th class="px-3 py-2 text-left text-xs w-28">ผู้เล่น</th>
-              <th class="px-3 py-2 text-center text-xs">คะแนน</th>
-              <th class="px-3 py-2 text-center text-xs hidden sm:table-cell">ทายถูก</th>
-              <th class="px-3 py-2 text-center text-xs hidden sm:table-cell">สกอร์ถูก</th>
+              <th class="px-2 py-2 text-left text-xs w-8">#</th>
+              <th class="px-2 py-2 text-left text-xs">ผู้เล่น</th>
+              <th class="px-2 py-2 text-center text-xs">คะแนน</th>
+              <th class="px-2 py-2 text-center text-xs hidden sm:table-cell">ทายถูก</th>
+              <th class="px-2 py-2 text-center text-xs hidden sm:table-cell">สกอร์ถูก</th>
+              <th class="px-2 py-2 text-center text-xs">ทายแชมป์</th>
             </tr>
           </thead>
           <tbody>
@@ -377,18 +379,22 @@ async function loadWelcomeLeaderboard() {
       const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
       const rowClass = rank <= 3 ? 'bg-amber-400/5' : '';
 
+      // Champion picks - show up to 5 flags
+      const champFlags = (m.champion_picks || []).map(p => getFlag(p.team)).join(' ');
+
       html += `
         <tr class="border-t border-white/5 ${rowClass}">
-          <td class="px-3 py-2 font-bold">${medal}</td>
-          <td class="px-3 py-2 font-semibold truncate">${m.username}</td>
-          <td class="px-3 py-2 text-center text-amber-400 font-bold">${m.total_points}</td>
-          <td class="px-3 py-2 text-center text-green-400 hidden sm:table-cell">${m.correct_results}</td>
-          <td class="px-3 py-2 text-center text-yellow-400 hidden sm:table-cell">${m.correct_scores}</td>
+          <td class="px-2 py-2 font-bold">${medal}</td>
+          <td class="px-2 py-2 font-semibold truncate max-w-[100px]">${m.username}</td>
+          <td class="px-2 py-2 text-center text-amber-400 font-bold">${m.total_points}</td>
+          <td class="px-2 py-2 text-center text-green-400 hidden sm:table-cell">${m.correct_results}</td>
+          <td class="px-2 py-2 text-center text-yellow-400 hidden sm:table-cell">${m.correct_scores}</td>
+          <td class="px-2 py-2 text-center">${champFlags || '<span class="text-gray-600">-</span>'}</td>
         </tr>
       `;
     });
 
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
     container.innerHTML = html;
   } catch (err) {
     container.innerHTML = '';

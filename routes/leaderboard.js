@@ -32,6 +32,15 @@ router.get('/all', (req, res) => {
     LIMIT 100
   `);
 
+  // Get champion predictions for each member
+  for (const member of members) {
+    const champPreds = prepareAll(
+      "SELECT team, round FROM champion_predictions WHERE user_id = ? ORDER BY created_at ASC",
+      [member.id]
+    );
+    member.champion_picks = champPreds;
+  }
+
   res.json(members);
 });
 
