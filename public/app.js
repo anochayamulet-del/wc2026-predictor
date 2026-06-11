@@ -95,6 +95,38 @@ function formatDate(dateStr) {
   return date.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
+// Convert ET time to Thailand time (ET + 11 hours)
+function toThaiTime(dateStr, timeStr) {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes + (11 * 60); // +11 hours for Thailand
+  
+  let newHours = Math.floor(totalMinutes / 60);
+  const newMinutes = totalMinutes % 60;
+  let newDate = new Date(dateStr + 'T00:00:00');
+  
+  if (newHours >= 24) {
+    newHours -= 24;
+    newDate.setDate(newDate.getDate() + 1);
+  }
+  
+  const thaiTimeStr = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+  const thaiDateStr = newDate.toISOString().split('T')[0];
+  
+  return { time: thaiTimeStr, date: thaiDateStr };
+}
+
+// Format time display with Thai timezone
+function formatMatchTime(dateStr, timeStr) {
+  const thai = toThaiTime(dateStr, timeStr);
+  return `${thai.time} น.`;
+}
+
+// Format date considering Thai timezone shift
+function formatMatchDate(dateStr, timeStr) {
+  const thai = toThaiTime(dateStr, timeStr);
+  return formatDate(thai.date);
+}
+
 // Navigation
 function renderNav() {
   const nav = document.getElementById('nav-menu');
@@ -403,8 +435,10 @@ function renderMatchCards(matches) {
   let html = '';
 
   for (const match of matches) {
-    if (match.match_date !== currentDate) {
-      currentDate = match.match_date;
+    // Use Thai time for grouping by date
+    const thaiDate = toThaiTime(match.match_date, match.match_time).date;
+    if (thaiDate !== currentDate) {
+      currentDate = thaiDate;
       html += `<h3 class="text-lg font-semibold text-amber-400 mt-6 mb-3 border-b border-white/10 pb-2">📆 ${formatDate(currentDate)}</h3>`;
     }
 
@@ -416,7 +450,7 @@ function renderMatchCards(matches) {
 
     const scoreDisplay = match.status === 'finished' || match.status === 'live'
       ? `<span class="text-2xl font-bold">${match.score_home ?? '-'} - ${match.score_away ?? '-'}</span>`
-      : `<span class="text-lg text-gray-400">${match.match_time}</span>`;
+      : `<span class="text-lg text-gray-400">${formatMatchTime(match.match_date, match.match_time)}</span>`;
 
     const predictBtn = currentUser && match.status === 'upcoming'
       ? `<button onclick="openPredictModal(${match.id})" class="mt-2 bg-amber-600 hover:bg-amber-500 px-4 py-1 rounded text-sm transition">🎯 ทายผล</button>`
@@ -478,7 +512,7 @@ async function openPredictModal(matchId) {
   modal.innerHTML = `
     <div class="bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 border border-white/20">
       <h3 class="text-xl font-bold text-center mb-4">🎯 ทายผลการแข่งขัน</h3>
-      <p class="text-center text-sm text-gray-400 mb-4">Group ${match.group_name} • ${formatDate(match.match_date)} • ${match.match_time}</p>
+      <p class="text-center text-sm text-gray-400 mb-4">Group ${match.group_name} • ${formatMatchDate(match.match_date, match.match_time)} • ${formatMatchTime(match.match_date, match.match_time)}</p>
       
       <div class="flex items-center justify-between mb-6">
         <div class="text-center flex-1">
