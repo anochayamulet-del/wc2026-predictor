@@ -359,11 +359,11 @@ async function loadWelcomeLeaderboard() {
           <h3 class="font-bold text-amber-400">🏆 ตารางคะแนนสมาชิก</h3>
           <span class="text-xs text-gray-400">${members.length} คน</span>
         </div>
-        <table class="w-full text-sm">
+        <table class="w-full text-sm table-fixed">
           <thead class="bg-white/5">
             <tr>
-              <th class="px-3 py-2 text-left text-xs">#</th>
-              <th class="px-3 py-2 text-left text-xs">ผู้เล่น</th>
+              <th class="px-3 py-2 text-left text-xs w-10">#</th>
+              <th class="px-3 py-2 text-left text-xs w-28">ผู้เล่น</th>
               <th class="px-3 py-2 text-center text-xs">คะแนน</th>
               <th class="px-3 py-2 text-center text-xs hidden sm:table-cell">ทายถูก</th>
               <th class="px-3 py-2 text-center text-xs hidden sm:table-cell">สกอร์ถูก</th>
@@ -380,7 +380,7 @@ async function loadWelcomeLeaderboard() {
       html += `
         <tr class="border-t border-white/5 ${rowClass}">
           <td class="px-3 py-2 font-bold">${medal}</td>
-          <td class="px-3 py-2 font-semibold">${m.username}</td>
+          <td class="px-3 py-2 font-semibold truncate">${m.username}</td>
           <td class="px-3 py-2 text-center text-amber-400 font-bold">${m.total_points}</td>
           <td class="px-3 py-2 text-center text-green-400 hidden sm:table-cell">${m.correct_results}</td>
           <td class="px-3 py-2 text-center text-yellow-400 hidden sm:table-cell">${m.correct_scores}</td>
@@ -510,9 +510,11 @@ function renderMatchCards(matches) {
         ? '<span class="bg-gray-600 text-xs px-2 py-0.5 rounded-full">จบ</span>'
         : '<span class="bg-green-600/50 text-xs px-2 py-0.5 rounded-full">รอแข่ง</span>';
 
-    const scoreDisplay = match.status === 'finished' || match.status === 'live'
+    const scoreDisplay = match.status === 'finished'
       ? `<span class="text-2xl font-bold">${match.score_home ?? '-'} - ${match.score_away ?? '-'}</span>`
-      : `<span class="text-lg text-gray-400">${formatMatchTime(match.match_date, match.match_time)}</span>`;
+      : match.status === 'live'
+        ? `<span class="text-2xl font-bold">${match.score_home ?? 0} - ${match.score_away ?? 0}</span>`
+        : `<span class="text-lg text-gray-400">${formatMatchTime(match.match_date, match.match_time)}</span>`;
 
     const predictBtn = currentUser && match.status === 'upcoming'
       ? `<button onclick="openPredictModal(${match.id})" class="mt-2 bg-amber-600 hover:bg-amber-500 px-4 py-1 rounded text-sm transition">🎯 ทายผล</button>`
@@ -526,15 +528,15 @@ function renderMatchCards(matches) {
         </div>
         <div class="flex items-center justify-between">
           <div class="flex-1 text-right">
-            <span class="text-lg">${getFlag(match.team_home)}</span>
-            <span class="ml-2 font-semibold">${match.team_home}</span>
+            <span class="font-semibold">${match.team_home}</span>
+            <span class="ml-2 text-lg">${getFlag(match.team_home)}</span>
           </div>
           <div class="px-4 text-center min-w-[100px]">
             ${scoreDisplay}
           </div>
           <div class="flex-1 text-left">
-            <span class="font-semibold">${match.team_away}</span>
-            <span class="ml-2 text-lg">${getFlag(match.team_away)}</span>
+            <span class="text-lg">${getFlag(match.team_away)}</span>
+            <span class="ml-2 font-semibold">${match.team_away}</span>
           </div>
         </div>
         <div class="text-center">${predictBtn}</div>
