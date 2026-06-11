@@ -329,8 +329,70 @@ function renderWelcome() {
           </div>
         `}
       </div>
+
+      <!-- Member Leaderboard -->
+      <div id="welcome-leaderboard" class="mb-8">
+        <div class="text-center py-4 text-gray-400"><div class="inline-block animate-spin">⚽</div> กำลังโหลดตารางคะแนน...</div>
+      </div>
     </div>
   `;
+
+  // Load leaderboard after render
+  loadWelcomeLeaderboard();
+}
+
+async function loadWelcomeLeaderboard() {
+  const container = document.getElementById('welcome-leaderboard');
+  if (!container) return;
+
+  try {
+    const members = await api('/leaderboard/all');
+
+    if (members.length === 0) {
+      container.innerHTML = '';
+      return;
+    }
+
+    let html = `
+      <div class="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <div class="bg-white/10 px-4 py-3 flex items-center justify-between">
+          <h3 class="font-bold text-amber-400">🏆 ตารางคะแนนสมาชิก</h3>
+          <span class="text-xs text-gray-400">${members.length} คน</span>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-white/5">
+            <tr>
+              <th class="px-3 py-2 text-left text-xs">#</th>
+              <th class="px-3 py-2 text-left text-xs">ผู้เล่น</th>
+              <th class="px-3 py-2 text-center text-xs">คะแนน</th>
+              <th class="px-3 py-2 text-center text-xs hidden sm:table-cell">ทายถูก</th>
+              <th class="px-3 py-2 text-center text-xs hidden sm:table-cell">สกอร์ถูก</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    members.forEach((m, i) => {
+      const rank = i + 1;
+      const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}`;
+      const rowClass = rank <= 3 ? 'bg-amber-400/5' : '';
+
+      html += `
+        <tr class="border-t border-white/5 ${rowClass}">
+          <td class="px-3 py-2 font-bold">${medal}</td>
+          <td class="px-3 py-2 font-semibold">${m.username}</td>
+          <td class="px-3 py-2 text-center text-amber-400 font-bold">${m.total_points}</td>
+          <td class="px-3 py-2 text-center text-green-400 hidden sm:table-cell">${m.correct_results}</td>
+          <td class="px-3 py-2 text-center text-yellow-400 hidden sm:table-cell">${m.correct_scores}</td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = '';
+  }
 }
 
 // Login Page

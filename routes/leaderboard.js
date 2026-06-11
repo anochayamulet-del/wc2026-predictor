@@ -17,6 +17,24 @@ router.get('/', (req, res) => {
   res.json(leaderboard);
 });
 
+// Get all members (including those with 0 points)
+router.get('/all', (req, res) => {
+  const members = prepareAll(`
+    SELECT u.id, u.username, 
+           COALESCE(l.total_points, 0) as total_points,
+           COALESCE(l.correct_results, 0) as correct_results,
+           COALESCE(l.correct_scores, 0) as correct_scores,
+           COALESCE(l.total_predictions, 0) as total_predictions
+    FROM users u
+    LEFT JOIN leaderboard l ON u.id = l.user_id
+    WHERE u.is_admin = 0
+    ORDER BY l.total_points DESC, u.username ASC
+    LIMIT 100
+  `);
+
+  res.json(members);
+});
+
 // Get user stats
 router.get('/user/:userId', (req, res) => {
   const stats = prepareGet(`
