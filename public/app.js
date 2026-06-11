@@ -267,6 +267,12 @@ function renderWelcome() {
         </div>
       </div>
 
+      <!-- Prize Poster -->
+      <div class="mb-8 text-center">
+        <h3 class="font-bold text-lg mb-3 text-amber-400">🎁 ของรางวัล</h3>
+        <img src="/prize-poster.jpg" alt="ของรางวัลสำหรับผู้ชนะ" class="w-full max-w-2xl mx-auto rounded-xl shadow-lg border border-white/10">
+      </div>
+
       <!-- Scoring System -->
       <div class="bg-white/5 border border-white/10 rounded-xl p-6 mb-8">
         <h3 class="font-bold text-lg mb-3 text-amber-400">📊 ระบบคะแนน</h3>
