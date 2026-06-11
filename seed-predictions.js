@@ -26,12 +26,9 @@ async function seedPredictions() {
   console.log(`🎲 สุ่มทายผลให้สมาชิก ${users.length} คน (${matches.length} แมตช์)...\n`);
 
   for (const user of users) {
-    // สุ่มจำนวนแมตช์ที่จะทาย (50-72 แมตช์ ให้สมจริง)
-    const numPredictions = 50 + Math.floor(Math.random() * 23);
-    const shuffledMatches = [...matches].sort(() => Math.random() - 0.5).slice(0, numPredictions);
-
+    // ทายผลครบทุกแมตช์ (72 แมตช์)
     let count = 0;
-    for (const match of shuffledMatches) {
+    for (const match of matches) {
       const predictedHome = randomScore();
       const predictedAway = randomScore();
 
